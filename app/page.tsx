@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, Github, Linkedin, Mail, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, Github, Instagram, Linkedin, Mail, MapPin, Sparkles } from "lucide-react";
 import { Card } from "@/components/card";
 import { education, experiences, homeSkillGroups, profile, projectPlaceholders, writingPlaceholders } from "@/lib/site-data";
 
-const focus = ["Recommender Systems", "Applied ML", "MLOps", "Full-stack AI", "Physical AI"];
+const focus = ["Applied ML", "Full-stack AI", "MLOps"];
 
 function getHomeRole(role: string) {
   return role.split(" | ")[0];
@@ -15,7 +15,7 @@ function getHomeOrg(org: string) {
   }
 
   if (org === "National Institute of Information and Communications Technology (NICT)") {
-    return "NICT";
+    return "National Institute of Information and Communications Technology";
   }
 
   return org;
@@ -37,7 +37,7 @@ export default function HomePage() {
               <span className="gradient-text">Hi, I&apos;m {profile.shortName}.</span>
             </h1>
             <p className="fade-up-delay-2 mt-7 max-w-3xl text-xl leading-9 text-slate-300">
-              I build applied machine learning systems and full-stack AI products, with interests across LLM applications, recommender systems, physical AI, robotic integration, and MLOps.
+              I focus on applied machine learning, including LLM applications, recommender systems, physical AI, and robotic integration, as well as MLOps and full-stack AI products.
             </p>
             <p className="fade-up-delay-2 mt-5 max-w-3xl text-lg leading-8 text-slate-400">
               This site collects my resume, future project case studies, technical notes, travel logs, J-pop thoughts, and personal reflections from life between San Diego, Taipei, and Tokyo.
@@ -60,6 +60,7 @@ export default function HomePage() {
               <Link href={`mailto:${profile.email}`} className="transition hover:text-ocean" aria-label="Email"><Mail size={20} /></Link>
               <Link href={profile.linkedin} className="transition hover:text-ocean" aria-label="LinkedIn"><Linkedin size={20} /></Link>
               <Link href={profile.github} className="transition hover:text-ocean" aria-label="GitHub"><Github size={20} /></Link>
+              <Link href={profile.instagram} className="transition hover:text-ocean" aria-label="Instagram"><Instagram size={20} /></Link>
             </div>
           </div>
 

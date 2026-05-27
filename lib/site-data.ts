@@ -2,13 +2,14 @@ export const profile = {
   brand: "skylining",
   name: "Tien-Ning (Sky) Lee",
   shortName: "Sky Lee",
-  title: "Applied ML · Recommender Systems · AI Products",
+  title: "Applied ML · Full-stack AI · AI Products",
   location: "San Diego · Taipei · Tokyo",
   email: "tienninglee@gmail.com",
   linkedin: "https://www.linkedin.com/in/tien-ning-lee-96a04b252",
   github: "https://github.com/SkyLiNing823",
+  instagram: "https://www.instagram.com/skyning823/",
   summary:
-    "M.S. student in Electrical and Computer Engineering at UC San Diego, focusing on Machine Learning and Data Science. I am interested in applied machine learning, including LLM applications, recommender systems, physical AI, and robotic integration, as well as MLOps and full-stack AI products. Outside of technical work, I enjoy travel, J-pop, and kendo.",
+    "M.S. student in Electrical and Computer Engineering, Machine Learning & Data Science Track, at UC San Diego. I focus on applied machine learning, including LLM applications, recommender systems, physical AI, and robotic integration, as well as MLOps and full-stack AI products. Outside of technical work, I enjoy travel, J-pop, and kendo.",
 };
 
 export const education = [
@@ -81,13 +82,13 @@ export const skills = {
   Programming: ["Python", "C++", "JavaScript", "Java", "R", "SQL"],
   "Libraries / Frameworks": ["scikit-learn", "TensorFlow", "PyTorch", "React", "FastAPI", "Tailwind CSS", "Streamlit", "BeautifulSoup"],
   "Tools / Platforms": ["FAISS", "Google Gemini API", "Alembic", "Git", "AWS", "Render", "Docker", "ROS2", "pytest"],
-  Interests: ["Applied ML", "LLM Applications", "Recommender Systems", "Physical AI", "MLOps"],
+  Interests: ["Applied ML", "LLM Applications", "Physical AI", "Full-stack AI", "MLOps"],
 };
 
 export const homeSkillGroups = [
   {
-    title: "AI systems",
-    items: ["Applied ML", "LLM Apps", "Recommender Systems", "Physical AI"],
+    title: "Applied ML systems",
+    items: ["LLM Apps", "Recommender Systems", "Physical AI", "Robotic Integration"],
   },
   {
     title: "Product engineering",
@@ -103,8 +104,8 @@ export const projectPlaceholders = [
   {
     title: "Project case studies coming soon",
     description:
-      "This section will later include selected work such as recommender systems, Polyglot Sensei, AI products, and applied ML projects.",
-    tags: ["Recommender Systems", "Full-stack AI", "Applied ML"],
+      "This section will later include selected work in applied ML, Polyglot Sensei, full-stack AI products, and engineering case studies.",
+    tags: ["Applied ML", "Full-stack AI", "AI Products"],
   },
   {
     title: "Portfolio details in progress",

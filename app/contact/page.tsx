@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Github, Linkedin, Mail } from "lucide-react";
+import { Github, Instagram, Linkedin, Mail } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { profile } from "@/lib/site-data";
 
@@ -9,6 +9,7 @@ const contacts = [
   { label: "Email", value: profile.email, href: `mailto:${profile.email}`, icon: Mail },
   { label: "LinkedIn", value: "tien-ning-lee-96a04b252", href: profile.linkedin, icon: Linkedin },
   { label: "GitHub", value: "SkyLiNing823", href: profile.github, icon: Github },
+  { label: "Instagram", value: "@skyning823", href: profile.instagram, icon: Instagram },
 ];
 
 export default function ContactPage() {
@@ -17,7 +18,7 @@ export default function ContactPage() {
       <SectionHeading
         eyebrow="Contact"
         title="Let's connect."
-        description="For recruiting, collaboration, or casual conversation around applied ML, recommender systems, J-pop, or travel, feel free to reach out."
+        description="For recruiting, collaboration, or casual conversation around applied ML, full-stack AI, J-pop, or travel, feel free to reach out."
       />
       <div className="mt-12 grid gap-5 md:grid-cols-2">
         {contacts.map((item) => {

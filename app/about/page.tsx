@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { Github, Linkedin, Mail } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { education, profile, skills } from "@/lib/site-data";
 
@@ -14,16 +12,9 @@ export default function AboutPage() {
         description={profile.summary}
       />
 
-      <div className="mt-10 flex flex-wrap gap-3">
-        <Link href={`mailto:${profile.email}`} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-slate-200 transition hover:border-ocean/50 hover:text-ocean">
-          <Mail size={16} /> Email
-        </Link>
-        <Link href={profile.linkedin} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-slate-200 transition hover:border-ocean/50 hover:text-ocean">
-          <Linkedin size={16} /> LinkedIn
-        </Link>
-        <Link href={profile.github} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-slate-200 transition hover:border-ocean/50 hover:text-ocean">
-          <Github size={16} /> GitHub
-        </Link>
+      <div className="mt-10 max-w-xl rounded-[1.5rem] border border-ocean/20 bg-gradient-to-br from-ocean/[0.14] via-white/[0.055] to-white/[0.025] p-5 shadow-glow">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ocean">Personal motto</p>
+        <p className="mt-3 text-2xl font-semibold italic tracking-tight text-slate-50">The sky is the limit.</p>
       </div>
 
       <div className="mt-14 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
@@ -31,10 +22,10 @@ export default function AboutPage() {
           <h2 className="text-2xl font-semibold text-slate-50">Current direction</h2>
           <div className="mt-6 space-y-5 text-base leading-8 text-slate-300">
             <p>
-              I am interested in applied machine learning, including LLM applications, recommender systems, physical AI, and robotic integration, as well as MLOps and full-stack AI products. I like systems where model quality, latency, data pipelines, and product design all matter together.
+              I enjoy building practical AI systems that connect models, data pipelines, backend services, and user-facing applications. My experience spans recommender systems, AI research, quantitative modeling, and full-stack AI applications.
             </p>
             <p>
-              Physical AI and robotics are also part of my current exploration through my upcoming internship in Tokyo. I see this more as an extension of applied AI systems rather than a full pivot away from recommender systems.
+              Currently, I am especially interested in applied ML engineering, AI products, MLOps, and data-driven user experiences. I am also exploring physical AI and robotic integration as part of practical, real-world AI systems.
             </p>
             <p>
               Outside technical work, I use this site as a place to collect notes about graduate school, travel, J-pop, kendo, language learning, and personal reflections.

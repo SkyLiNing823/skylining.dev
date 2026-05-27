@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     default: "skylining | Sky Lee",
     template: "%s | skylining",
   },
-  description: "Personal website of Tien-Ning (Sky) Lee: applied ML, recommender systems, AI products, and writing.",
+  description: "Personal website of Tien-Ning (Sky) Lee: applied ML, full-stack AI, AI products, and writing.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

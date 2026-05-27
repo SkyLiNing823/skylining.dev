@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Github, Linkedin, Mail } from "lucide-react";
+import { Download } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { education, experiences, profile, skills } from "@/lib/site-data";
 
@@ -11,12 +11,12 @@ export default function ResumePage() {
       <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <SectionHeading
           eyebrow="Resume"
-          title="Experience across recommender systems, applied ML, and AI research."
-          description="A web version of my resume. A downloadable PDF can be added after the final resume file is ready."
+          title="Experience across applied ML, full-stack AI, and AI research."
+          description="A web version of my resume, with a downloadable PDF available for sharing."
         />
-        <button className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-slate-500" title="PDF resume will be added later">
-          <Download size={16} /> PDF coming soon
-        </button>
+        <Link href="/Tien-Ning-Sky-Lee-Resume.pdf" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 hover:border-ocean/50 hover:text-ocean" target="_blank">
+          <Download size={16} /> Download PDF
+        </Link>
       </div>
 
       <div className="mt-12 rounded-[2rem] glass-card p-8">
@@ -24,11 +24,6 @@ export default function ResumePage() {
           <div>
             <h2 className="text-3xl font-semibold text-slate-50">{profile.name}</h2>
             <p className="mt-2 text-slate-400">{profile.title}</p>
-          </div>
-          <div className="grid gap-2 text-sm text-slate-400 sm:grid-cols-2 md:text-right">
-            <Link href={`mailto:${profile.email}`} className="inline-flex items-center gap-2 transition hover:text-ocean md:justify-end"><Mail size={15} /> {profile.email}</Link>
-            <Link href={profile.linkedin} className="inline-flex items-center gap-2 transition hover:text-ocean md:justify-end"><Linkedin size={15} /> LinkedIn</Link>
-            <Link href={profile.github} className="inline-flex items-center gap-2 transition hover:text-ocean md:justify-end"><Github size={15} /> GitHub</Link>
           </div>
         </div>
 

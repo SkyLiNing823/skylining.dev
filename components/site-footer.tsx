@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Github, Linkedin, Mail } from "lucide-react";
+import { Github, Instagram, Linkedin, Mail } from "lucide-react";
 import { profile } from "@/lib/site-data";
 
 export function SiteFooter() {
@@ -11,6 +11,7 @@ export function SiteFooter() {
           <Link href={`mailto:${profile.email}`} className="transition hover:text-ocean" aria-label="Email"><Mail size={18} /></Link>
           <Link href={profile.linkedin} className="transition hover:text-ocean" aria-label="LinkedIn"><Linkedin size={18} /></Link>
           <Link href={profile.github} className="transition hover:text-ocean" aria-label="GitHub"><Github size={18} /></Link>
+          <Link href={profile.instagram} className="transition hover:text-ocean" aria-label="Instagram"><Instagram size={18} /></Link>
         </div>
       </div>
     </footer>
