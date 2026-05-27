@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.18), transparent 34rem),
+    radial-gradient(circle at 85% 5%, rgba(129, 140, 248, 0.13), transparent 30rem),
+    radial-gradient(circle at 50% 95%, rgba(20, 184, 166, 0.10), transparent 34rem),
+    #05070d;
+  color: #e5edf7;
+}
+
+a {
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(125, 211, 252, 0.28);
+}
+
+@layer components {
+  .glass-card {
+    @apply border border-white/10 bg-white/[0.045] shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl;
+  }
+
+  .soft-ring {
+    @apply ring-1 ring-white/10;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-sky-200 via-cyan-100 to-slate-100 bg-clip-text text-transparent;
+  }
+
+  .pill {
+    @apply rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs font-medium text-slate-300;
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+.fade-up {
+  animation: fade-up 0.7s ease both;
+}
+
+.fade-up-delay-1 {
+  animation: fade-up 0.7s ease 0.08s both;
+}
+
+.fade-up-delay-2 {
+  animation: fade-up 0.7s ease 0.16s both;
+}
+
+.prose-custom h2 {
+  @apply mt-10 text-2xl font-semibold text-slate-100;
+}
+
+.prose-custom p {
+  @apply mt-5 leading-8 text-slate-300;
+}
+
+.prose-custom ul {
+  @apply mt-5 list-disc space-y-2 pl-5 text-slate-300;
+}
