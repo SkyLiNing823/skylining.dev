@@ -24,7 +24,7 @@ export default async function WritingPostPage({ params }: { params: Promise<{ sl
       <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-50 md:text-5xl">{post.title}</h1>
       <p className="mt-5 text-lg leading-8 text-slate-400">{post.description}</p>
       <div className="mt-6 flex flex-wrap gap-2">
-        {post.tags.map((tag) => <span key={tag} className="pill">{tag}</span>)}
+        {[...post.language, ...post.tags].map((tag) => <span key={tag} className="pill">{tag}</span>)}
       </div>
       <div className="prose-custom mt-12 border-t border-white/10 pt-10">
         <MDXRemote source={post.content} />

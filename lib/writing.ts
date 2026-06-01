@@ -11,6 +11,7 @@ export type Post = {
   date: string;
   category: string;
   tags: string[];
+  language: string[];
   content: string;
 };
 
@@ -33,6 +34,7 @@ export function getAllPosts(): Post[] {
         date: data.date ?? "",
         category: data.category ?? "Notes",
         tags: data.tags ?? [],
+        language: data.language ?? [],
         content,
       };
     })
