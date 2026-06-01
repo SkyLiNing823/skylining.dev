@@ -81,7 +81,7 @@ a {
 }
 
 .prose-custom p {
-  @apply mt-5 leading-8 text-slate-300;
+  @apply mt-5 whitespace-pre-line leading-8 text-slate-300;
 }
 
 .prose-custom ul {
