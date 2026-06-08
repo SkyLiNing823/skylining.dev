@@ -4,7 +4,6 @@ import { profile } from "@/lib/site-data";
 const navItems = [
   { href: "/about", label: "About" },
   { href: "/resume", label: "Resume" },
-  { href: "/projects", label: "Projects" },
   { href: "/writing", label: "Writing" },
   { href: "/contact", label: "Contact" },
 ];

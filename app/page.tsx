@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Github, Instagram, Linkedin, Mail, MapPin, Sparkles } from "lucide-react";
 import { Card } from "@/components/card";
-import { education, experiences, homeSkillGroups, profile, projectPlaceholders, writingPlaceholders } from "@/lib/site-data";
+import { education, experiences, homeSkillGroups, profile, writingPlaceholders } from "@/lib/site-data";
 
 const focus = ["Applied ML", "Full-stack AI", "MLOps"];
 
@@ -51,8 +51,8 @@ export default function HomePage() {
               <Link href="/resume" className="rounded-full bg-ocean px-6 py-3 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200">
                 View resume
               </Link>
-              <Link href="/projects" className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 hover:border-ocean/50 hover:bg-white/[0.06]">
-                Explore projects
+              <Link href="/writing" className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 hover:border-ocean/50 hover:bg-white/[0.06]">
+                Read writing
               </Link>
             </div>
 
@@ -106,21 +106,6 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-20">
-        <div className="flex items-end justify-between gap-8">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-ocean">Selected work</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">Projects</h2>
-          </div>
-          <Link href="/projects" className="hidden items-center gap-2 text-sm font-medium text-ocean md:flex">
-            Open projects <ArrowRight size={16} />
-          </Link>
-        </div>
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
-          {projectPlaceholders.map((project) => <Card key={project.title} {...project} />)}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 pb-24">
         <div className="flex items-end justify-between gap-8">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.22em] text-ocean">Journal</p>
