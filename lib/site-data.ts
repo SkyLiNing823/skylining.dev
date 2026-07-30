@@ -37,9 +37,9 @@ export const experiences = [
     period: "Jul. 2026 - Sep. 2026",
     bullets: [
       "Developed Physical AI applications for Unitree G1 and Go2 robots, including a visual inspection agent that converts live camera input into object detections, risk assessments, and operator alerts.",
-      "Integrated Unitree SDK2, CycloneDDS, and a persistent GPU inference service for continuous frame ingestion, structured outputs, JSON validation, and automated inspection reports.",
-      "Evaluated vision-language models and redesigned the real-time pipeline using Grounding DINO, ROI geometry, and deterministic risk policies, achieving sub-second inference while improving spatial grounding, reproducibility, and explainability.",
-      "Built a real-time monitoring dashboard with detection overlays, route-occupancy analysis, risk explanations, inference telemetry, process controls, and audio warnings.",
+      "Integrated Unitree SDK2, CycloneDDS, and persistent GPU inference services for continuous camera ingestion, structured outputs, deterministic geometry policies, and automated inspection reports.",
+      "Profiled the end-to-end vision pipeline and optimized image processing and camera capture, reducing overlay latency by 92% and improving Go2 image updates from 3-4 seconds to approximately 1 second.",
+      "Evaluated vision-language models and built a Grounding DINO monitoring pipeline with ROI-based risk analysis, real-time overlays, inference telemetry, process controls, and audio warnings.",
     ],
     tags: ["Physical AI", "Robotics", "Unitree", "Computer Vision"],
   },
