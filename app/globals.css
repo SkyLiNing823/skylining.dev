@@ -77,13 +77,99 @@ a {
 }
 
 .prose-custom h2 {
-  @apply mt-10 text-2xl font-semibold text-slate-100;
+  @apply mt-14 scroll-mt-28 text-3xl font-semibold text-slate-100;
+}
+
+.prose-custom h3 {
+  @apply mt-10 scroll-mt-28 text-2xl font-semibold text-slate-100;
+}
+
+.prose-custom h4 {
+  @apply mt-8 scroll-mt-28 text-xl font-semibold text-slate-100;
 }
 
 .prose-custom p {
   @apply mt-5 whitespace-pre-line leading-8 text-slate-300;
 }
 
-.prose-custom ul {
+.prose-custom a {
+  @apply text-ocean underline decoration-ocean/30 underline-offset-4 transition hover:decoration-ocean;
+}
+
+.prose-custom strong {
+  @apply font-semibold text-slate-100;
+}
+
+.prose-custom ul,
+.prose-custom ol {
   @apply mt-5 list-disc space-y-2 pl-5 text-slate-300;
+}
+
+.prose-custom ol {
+  @apply list-decimal;
+}
+
+.prose-custom li {
+  @apply pl-1 leading-8;
+}
+
+.prose-custom blockquote {
+  @apply my-7 border-l-2 border-ocean/60 bg-ocean/[0.05] px-5 py-1 text-slate-300;
+}
+
+.prose-custom blockquote p:first-child {
+  @apply mt-3;
+}
+
+.prose-custom blockquote p:last-child {
+  @apply mb-3;
+}
+
+.prose-custom hr {
+  @apply my-12 border-white/10;
+}
+
+.prose-custom pre {
+  @apply my-7 overflow-x-auto rounded-2xl border border-white/10 bg-black/35 p-5 text-sm leading-7 text-slate-200;
+}
+
+.prose-custom pre code {
+  @apply border-0 bg-transparent p-0 text-inherit;
+}
+
+.prose-custom :not(pre) > code {
+  @apply rounded border border-white/10 bg-white/[0.07] px-1.5 py-0.5 text-[0.9em] text-cyan-100;
+}
+
+.prose-custom table {
+  @apply my-7 block w-full overflow-x-auto border-collapse text-left text-sm text-slate-300;
+}
+
+.prose-custom thead {
+  @apply border-b border-white/20 text-slate-100;
+}
+
+.prose-custom th,
+.prose-custom td {
+  @apply min-w-32 border-b border-white/10 px-4 py-3 align-top;
+}
+
+.prose-custom img {
+  @apply my-8 h-auto w-full rounded-2xl border border-white/10 bg-black/20;
+}
+
+.prose-custom details {
+  @apply my-7 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-slate-300;
+}
+
+.prose-custom summary {
+  @apply cursor-pointer font-semibold text-slate-100;
+}
+
+.video-embed {
+  @apply aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black;
+}
+
+.video-embed iframe {
+  @apply h-full w-full;
 }

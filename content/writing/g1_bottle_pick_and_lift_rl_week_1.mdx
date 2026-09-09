@@ -1,0 +1,828 @@
+---
+title: "G1 Bottle Pick-and-Lift with Isaac Lab and PPO: Building the MVP"
+description: "Week 1: building the first reinforcement-learning MVP for bottle grasping and lifting with Unitree G1."
+date: "2026-08-05"
+publishedAt: "2026-08-05T09:00:00+09:00"
+category: "Technical"
+series: "G1 Bottle Pick-and-Lift"
+tags: ["Physical AI", "Robotics", "Reinforcement Learning", "Isaac Lab", "PPO"]
+language: ["English"]
+status: "published"
+coverImage: "/writing/g1_bottle_pick_and_lift_rl_week_1/cover.webp"
+sourceUrl: "https://dev.classmethod.jp/articles/g1_bottle_pick_and_lift_rl_week_1/"
+---
+
+## Introduction
+
+In the previous internship, I developed a robot visual inspection agent for operator advisory using camera images from the Unitree Go2 and G1.
+
+Starting this time, as a new Physical AI project, I am working on **reinforcement learning for bottle grasping and lifting targeting the Unitree G1 Inspire Hand**.
+
+This series is planned to proceed under the following title.
+
+> Isaac Lab and PPO-based Unitree G1 Bottle Pick-and-Lift Reinforcement Learning Project (G1 Bottle Pick-and-Lift Reinforcement Learning project)
+
+In this project, PPO-based reinforcement learning is applied to a fixed standing G1 in Isaac Lab for a bottle-shaped object on a table.
+
+```
+Extend hand toward the bottle
+  ↓
+Form grasping posture with Inspire Hand
+  ↓
+Lift from the table
+  ↓
+Retain
+```
+
+While sim-to-real is eventually in scope, I am currently in the simulation-first stage.
+
+Rather than handling walking, autonomous navigation, handoff to humans, and online reinforcement learning from the start, the policy is to first confirm physically valid grasping and lifting conditions in Isaac Lab, then build and evaluate a reinforcement learning policy around those conditions.
+
+This article summarizes what was implemented and verified during the first week of the project.
+
+- Isaac Lab RL environment using Unitree G1 Inspire Hand
+- Reasons for dividing the bottle grasping task into stages
+- Scripted arm trajectory and 12D hand residual PPO
+- Adjustment of wrist / thumb / finger contact postures
+- Contact and physics parameter diagnosis using AI as assistance
+- Scripted grasp / lift baseline
+- PPO lift / hold showcase with fixed initial state
+- Random placement curriculum to be pursued next week
+
+Note that this project is independent from the previous Go2 inspection project.
+
+The Go2's camera, detector, dashboard, and VLM / LLM outputs are not connected to the G1's locomotion, arm, hand, or grasp control.
+
+---
+
+## Goal: Stationary Bottle Pick-and-Lift Reinforcement Learning with G1
+
+The task handled in this v1 is for a fixed standing G1 to grasp, lift, and retain a lightweight bottle-shaped object on a table.
+
+```
+fixed standing G1
+  ↓
+approach to bottle-like object
+  ↓
+grasp formation
+  ↓
+lift
+  ↓
+retention above the table
+```
+
+The initial scope is limited to the following.
+
+- fixed-base / fixed standing G1
+- Inspire five-finger hand
+- camera-free state-based observation
+- DDS-free simulation environment
+- teleoperation-free
+- lightweight bottle-like rigid object
+- arm's large trajectory is scripted
+- PPO handles residual control of 12 joints in the right hand
+
+Online RL exploration on the real robot is not performed.
+
+Also, success in simulation does not directly imply real robot performance or safety.
+
+---
+
+## Why Not Start with 19D End-to-End PPO from the Beginning
+
+Initially, a BottlePickLift task handling both 7 degrees of freedom in the right arm and 12 degrees of freedom in the right hand simultaneously was also prepared.
+
+```
+right arm:
+  7D
+
+right Inspire Hand:
+  12D
+
+total:
+  19D
+```
+
+However, bottle grasping simultaneously involves the following challenges.
+
+```
+arm approach
+  + wrist orientation
+  + thumb opposition
+  + finger contact
+  + object retention
+  + lift trajectory
+```
+
+If PPO alone is used to explore all of these from the start, it becomes difficult to isolate the cause when failure occurs.
+
+For example, even if the bottle is dropped,
+
+- whether the arm position was off
+- whether the wrist roll was incorrect
+- whether the thumb closed too early
+- whether the finger contact was weak
+- whether the lift trajectory was too abrupt
+
+becomes difficult to determine.
+
+Therefore, in this project, the task was divided into stages.
+
+```
+Stage 1:
+  Create a safe pre-grasp pose
+
+Stage 2:
+  Verify hand contact and retention
+  around the scripted arm trajectory
+
+Stage 3:
+  Expand to broader approach + grasp + lift
+
+Stage 4:
+  Introduce bounded object-position randomization
+```
+
+Currently, the arm's large trajectory is fixed as scripted, and PPO is responsible for the 12D residual action of the right Inspire Hand.
+
+The role of PPO is not to rediscover the entire arm movement from scratch, but to adjust finger contact, anti-slip, and retention around a known contact posture.
+
+---
+
+## What Was Accomplished This Week
+
+During the first week of the project, the following were mainly implemented and verified.
+
+- Built a fixed-base RL task using the Unitree G1 Inspire Hand asset
+- Built a scene using dynamic object physics and contact sensors
+- Confirmed PPO training, checkpoint, deterministic playback, and MP4 recording
+- Built a safe pre-grasp task considering self-collision
+- Implemented a scripted arm phase controller for safe → ingress → grasp → lift
+- Built a PPO task using 12D residual action for the right hand
+- Confirmed the failure where the thumb closes early and pushes the bottle away
+- Introduced delayed hand activation and minimum pre-shape
+- Diagnosed contact postures for wrist roll, thumb yaw, and thumb pitch
+- Created a bottle-like rigid object referencing the exterior dimensions of a 600 ml-class bottle
+- Implemented a slow contact / squeeze / lift trajectory
+- Confirmed formal retention-and-lift success with the scripted baseline
+- Built a BottleSlowPPO task centered on the scripted baseline
+- Executed fresh PPO training with 128 parallel environments and 300 iterations
+- Recorded a bottle lift / hold showcase with fixed initial state using deterministic PPO playback
+
+Rather than simply running PPO, the major progress of the first week was being able to gradually organize what to train on while verifying the posture before contact is established, hand geometry, actual joint positions, and physical failures.
+
+---
+
+## Stage 1: Creating a Safe Final-Approach with BottlePreGrasp Curriculum
+
+In the first Stage 1, a BottlePreGrasp curriculum was built to safely bring the G1's right arm close to the bottle as a preliminary stage before grasping.
+
+The purpose here is not simply to reach a target marker.
+
+The goal is to create a physically feasible final-approach trajectory that maintains the hand orientation and arm posture connected to the subsequent grasp without unnaturally passing through the robot torso.
+
+First, the position of the green target marker was lowered to a position closer to the lower-middle part of the bottle.
+
+This changed the setup to aim for a pre-grasp geometry leading to future thumb-to-finger opposition, rather than just reaching toward the top of the bottle.
+
+### Initial 7D Arm-Only PPO
+
+The initial baseline used a 7D arm-only policy controlling the right arm's 7 degrees of freedom with PPO.
+
+```
+right arm action:
+  7D
+
+wrist:
+  controlled by PPO
+```
+
+With this policy, smooth approach toward the target marker and stopping behavior near it were confirmed.
+
+However, when confirming the grasp aperture geometry and performing deterministic playback, it was found that because the wrist action is free, an unnatural approach from the web of the thumb side is permitted.
+
+In other words, it was found that reward alone for approaching the target does not necessarily yield a wrist posture suitable for the subsequent grasp.
+
+### Failure case 1: Unnatural thumb-side approach by free wrist policy
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/-XFHvZw87P4" />
+
+Based on this result, wrist yaw, roll, and pitch were removed from the PPO action, and a 4D FixedWrist curriculum controlling only the shoulder and elbow was implemented.
+
+```
+PPO action:
+  4D shoulder / elbow
+
+wrist:
+  fixed
+```
+
+In the FixedWrist task, behavior approaching the bottle with the wrist posture fixed was confirmed.
+
+However, after longer training, deterministic playback revealed another problem.
+
+A trajectory where the arm uses a self-intersection shortcut that unnaturally overlaps with the torso to reach near the target.
+
+Looking at the target reward alone, it appears to succeed in approaching, but in reality it is an unnatural posture that does not lead to subsequent manipulation.
+
+### Failure case 2: Self-intersection shortcut passing through the torso
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/d84uXTVQWWw" />
+
+To address this problem, articulation self-collision was enabled.
+
+With self-collision enabled, trajectories like the previous ones crossing through the torso could no longer be executed.
+
+On the other hand, it was also found that having PPO explore from the default pose alone makes it difficult to find a legal trajectory that approaches the bottle while avoiding self-collision.
+
+Therefore, it was first confirmed that a scripted action could naturally approach the bottle even with self-collision enabled.
+
+A safe early arm pose was extracted from that trajectory and set as the reset / default pose for a new self-collision curriculum task.
+
+Ultimately, the Stage 1 task was organized as follows.
+
+```
+task:
+  BottlePreGraspFixedWristSelfCollision
+
+PPO action:
+  4D shoulder / elbow
+
+wrist:
+  fixed open pose
+
+self-collision:
+  enabled
+
+reset pose:
+  safe early arm pose extracted from scripted diagnostic
+```
+
+This task emphasizes the arm approaching the bottle from outside the torso.
+
+In the final stochastic rollout of the best run, the following value was confirmed.
+
+```
+pregrasp_success:
+  0.5625
+```
+
+This result does not mean success in grasping or lifting.
+
+However, the achievement of Stage 1 was being able to improve the RL curriculum to maintain physically feasible trajectories including self-collision, rather than simply maximizing the reward.
+
+### Stage 1: Self-collision enabled safe pre-grasp demo
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/dDVuxXmI3E8" />
+
+---
+
+## Stage 2: Scripted Arm Trajectory and 12D Hand Residual PPO
+
+In Stage 2, the arm's large movement is not delegated to PPO but is given as scripted through a phase controller.
+
+```
+Phase 0:
+  safe pose
+
+Phase 1:
+  ingress pose
+
+Phase 2:
+  grasp pose
+
+Phase 3:
+  lift / hold pose
+```
+
+What PPO outputs is the 12D residual action of the right Inspire Hand.
+
+```
+state observation:
+  53D
+
+PPO action:
+  right hand residual 12D
+
+residual scale:
+  0.08 rad
+```
+
+Conceptually, the configuration is as follows.
+
+```
+scripted arm trajectory
+  + scripted hand target
+  + PPO hand residual
+  ↓
+contact adaptation / anti-slip correction
+```
+
+With this configuration, the policy learns small adjustments of finger contact during contact, rather than rediscovering broad arm approaches from scratch, around a known grasping trajectory.
+
+---
+
+## First Visible Failure: Thumb Closes Early and Pushes the Bottle Away
+
+In the initial hand-only PPO, a failure was observed where the thumb started closing before ingress was complete, pushing the bottle in the lateral direction.
+
+```
+thumb closes too early
+  ↓
+object is pushed away
+  ↓
+unstable contact / object-out-of-workspace
+```
+
+To address this problem, the hand action was phase-gated.
+
+```
+before grasp phase:
+  default / open hand target
+
+from grasp phase:
+  scripted pre-shape + PPO residual
+```
+
+Furthermore, a clamp was also added so that the PPO residual does not cancel the finger pre-shape and reopen the fingers in the grasp / lift phase.
+
+```
+target:
+  max(scripted pre-shape, scripted pre-shape + PPO residual)
+```
+
+With this change, object-out-of-workspace due to early thumb push was significantly reduced.
+
+### Failure demo: Thumb closes early and pushes the bottle
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/-zFxEnWNDJk" />
+
+---
+
+## Contact and Physics Parameter Diagnosis Using AI as Assistance
+
+Adjusting physical contact, joint limits, thumb opposition, hand stiffness, and trajectory timing for robot hands is not within my area of expertise.
+
+Therefore, this time, I proceeded by using AI as an auxiliary technical partner to form physical hypotheses and verify them with diagnostic scripts in Isaac Lab.
+
+However, rather than adopting AI suggestions directly, the following were always confirmed.
+
+```
+AI-assisted hypothesis
+  ↓
+create scripted diagnostic
+  ↓
+confirm action target
+  ↓
+confirm actual joint position
+  ↓
+observe contact shape in video
+  ↓
+confirm termination result
+```
+
+What was particularly important was learning that having a joint target set and that joint actually moving as expected are two different things.
+
+During contact, some finger intermediate joints and thumb joints did not reach their targets and were affected by contact geometry and collision.
+
+Therefore, rather than continuing to increase the target angle, the relative positions of the wrist, thumb, and four fingers and the trajectory up to contact were reviewed.
+
+---
+
+## Adjustment of Wrist Roll and Thumb Opposition
+
+As a result of confirming contact, a form closer to side-opposition where the thumb faces the finger bank from the side was more promising than a posture where the thumb pushes the bottle from above.
+
+Representative settings used in the scripted diagnostic are as follows.
+
+```
+wrist roll:
+  -0.25 rad
+
+thumb yaw:
+  +0.50 rad
+
+thumb pitch:
+  approximately +0.025 rad
+
+contact close:
+  four fingers: +0.42 rad
+  thumb intermediate: +0.32 rad
+  thumb distal: +0.40 rad
+
+deeper squeeze:
+  four fingers: +0.70 rad
+  thumb intermediate: +0.38 rad
+  thumb distal: +0.46 rad
+
+hand stiffness:
+  50
+```
+
+These values are not optimal values for the real robot, but values confirmed for the current simulation asset, bottle geometry, and fixed initial state.
+
+Also, since thumb pitch is near the soft joint limit, both the requested target and the effective target after clamping were confirmed in the diagnostic.
+
+---
+
+## Creating a 600 ml-Class Bottle-Like Object
+
+Initially, a smooth cylinder proxy was also used, but I wanted to also confirm contact with a shape that has shoulders, a neck, and a cap resembling a bottle.
+
+Therefore, a bottle-like object that moves as a single rigid body was prepared.
+
+```
+type:
+  single rigid-body bottle-like object
+
+approximate total height:
+  0.225 m
+
+main body diameter:
+  0.068 m
+
+mass:
+  0.08 kg
+```
+
+The exterior is referenced from a general 600 ml-class round PET bottle.
+
+However, this is a simulation proxy with an approximated exterior shape.
+
+It does not fully reproduce the mass distribution, flexibility, surface friction, or liquid sloshing of an actual commercial PET bottle filled with beverage.
+
+![Bottle-like rigid-body model used in simulation](/writing/g1_bottle_pick_and_lift_rl_week_1/image-01.jpg)
+
+---
+
+## Abrupt Close Failure and Slow Contact Trajectory
+
+When the hand target was switched abruptly to the close side, the bottle sometimes toppled on first contact.
+
+```
+abrupt close
+  ↓
+first contact shock
+  ↓
+bottle topples / slips
+```
+
+From this failure, it became clear that not only the final close target but also the temporal process of reaching it is important.
+
+Therefore, the scripted grasp sequence was changed as follows.
+
+```
+step 80:
+  thumb side preposition
+
+step 120–200:
+  slow contact ramp
+
+step 201–270:
+  slow squeeze ramp
+
+step 270–300:
+  squeeze hold
+
+step 300–360:
+  slow arm lift ramp
+
+step 360 onward:
+  lift hold
+```
+
+This slow trajectory is the result of verifying in a simulation diagnostic the hypothesis, formed with AI assistance, of "reducing contact shock and creating stable first contact."
+
+### Failure demo: Bottle topples with abrupt close
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/hlQgO7-655w" />
+
+### Slow contact / squeeze / lift demo
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/Z8O8eDzKrfw" />
+
+---
+
+## Confirming Formal Retention-and-Lift Success with Scripted Baseline
+
+Using the slow contact / slow squeeze / slow lift sequence, the scripted baseline was executed on the bottle task with a fixed initial state.
+
+In this task, success is not determined merely by the object moving slightly or fingers making contact.
+
+The success condition includes requirements such as the following.
+
+```
+lift phase
+
++ bottle center height exceeds the resting reference by at least 1 cm
++ hand-to-object distance < 0.09 m
++ object uprightness >= 0.85
++ object speed < 0.15 m/s
++ 24 consecutive valid steps
+```
+
+In the scripted diagnostic, the following were confirmed.
+
+```
+CONTACT_TARGET_VERIFICATION:
+  PASS
+
+SQUEEZE_TARGET_VERIFICATION:
+  PASS
+
+LIFT_TARGET_VERIFICATION:
+  PASS
+
+retention_lift_success:
+  True
+
+object_out_of_workspace:
+  False
+
+maximum bottle-center lift delta:
+  +0.019683 m
+```
+
+The maximum bottle center lift delta was approximately 1.97 cm.
+
+That is, while in a fixed initial state and single simulator configuration, a scripted simulation baseline was confirmed that lifts the bottle from the table and retains it using the current wrist and thumb posture and slow trajectory.
+
+What was confirmed here is a physically valid baseline for subsequent RL.
+
+### Scripted bottle grasp / lift baseline demo
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/b5Gxa0UoIMA" />
+
+---
+
+## BottleSlowPPO Centered on Scripted Baseline
+
+After the scripted baseline was established, a task was created to train a 12D residual hand policy around that trajectory.
+
+```
+task:
+  BottleGraspRetentionUnderLiftBottleSlowPPO
+
+arm:
+  scripted safe / ingress / slow lift
+
+hand:
+  side-open → contact ramp → squeeze ramp
+  + 12D PPO residual
+
+object:
+  same bottle-like rigid object
+
+hand stiffness:
+  50
+```
+
+PPO is not a policy that finds the bottle and moves the arm broadly.
+
+The current goal is to confirm whether the following actions can be learned around the scripted baseline.
+
+```
+contact adaptation
+anti-slip correction
+small finger adjustments
+retention support during lift
+```
+
+Training was executed under the following conditions.
+
+```
+parallel environments:
+  128
+
+iterations:
+  300
+
+total timesteps:
+  921,600
+
+action:
+  12D right-hand residual
+```
+
+---
+
+## PPO Training and Deterministic Showcase
+
+In the fresh PPO training over 300 iterations, the entire workflow of training, checkpoint saving, deterministic playback, and MP4 recording was confirmed.
+
+In the final stochastic rollout, the following values were obtained.
+
+```
+mean reward:
+  +1.69
+
+lift_phase_retention:
+  +0.0586
+
+object_out_of_workspace:
+  0.0547
+
+retention_lift_success:
+  0.0000
+```
+
+Formal retention success in stochastic rollout has not yet been confirmed.
+
+On the other hand, when `model_299` was played back deterministically with a fixed initial state, behavior where the bottle was lifted was confirmed.
+
+Furthermore, when recorded in a showcase task with only the immediate reset on success disabled for demo purposes, a clip of approximately 10 seconds showing bottle grasping, lifting, and retention was recorded while maintaining dynamic physics and PPO inference.
+
+The current primary demo is described as follows.
+
+> G1 Inspire-Hand Bottle Lift with PPO Residual Control
+>
+> Isaac Lab Simulation — Fixed Initial Bottle State
+
+---
+
+### Showcase Evaluation Conditions
+
+The current PPO showcase is executed under the following fixed conditions.
+
+```
+robot:
+  fixed-base G1
+
+object:
+  fixed initial bottle state
+
+arm:
+  scripted bounded trajectory
+
+policy:
+  deterministic PPO checkpoint playback
+
+hand control:
+  12D Inspire Hand residual action
+
+observation:
+  camera-free state-based observation
+```
+
+This video does not include random placement, camera input, or real robot evaluation.
+
+---
+
+### Current PPO showcase: Lift / hold with fixed initial bottle state
+
+<VideoEmbed url="https://www.youtube-nocookie.com/embed/JvaytpEHYVU" />
+
+The following are confirmed in this video.
+
+```
+deterministic PPO inference
++ scripted arm trajectory
++ dynamic bottle physics
++ visible grasp
++ tabletop lift
++ visible hold
+```
+
+On the other hand, the following are not shown at this point.
+
+```
+stochastic formal success
+random-placement robustness
+arbitrary bottle generalization
+real robot performance
+sim-to-real transfer
+```
+
+---
+
+## Current Configuration
+
+The current pipeline is conceptually as follows.
+
+```
+G1 Inspire Hand asset
+  ↓
+fixed-base Isaac Lab scene
+  ↓
+scripted safe / ingress / grasp / lift phases
+  ↓
+bottle-like dynamic rigid object
+  ↓
+state observation (53D)
+  ↓
+12D right-hand PPO residual
+  ↓
+retention-and-lift termination
+  ↓
+checkpoint / deterministic playback / MP4
+```
+
+In the previous Go2 inspection project, camera input, object detection, ROI geometry, and operator advisory were handled.
+
+In this project, rather than directly controlling the robot with cameras or LLMs, the following elements are the focus in simulation.
+
+```
+robot hand kinematics
+contact geometry
+rigid-body dynamics
+reward / termination design
+PPO training
+deterministic evaluation
+```
+
+---
+
+## This Week's Achievements and Current Limitations
+
+As progress in the first week of the project, the following were confirmed.
+
+- Isaac Lab RL environment using G1 Inspire Hand
+- Pre-grasp task considering self-collision
+- Scripted arm phase controller
+- 12D hand residual PPO
+- Diagnostic of wrist / thumb / finger contact postures
+- Slow contact / squeeze / lift trajectory
+- Scripted retention-and-lift baseline with bottle-like object
+- PPO training / checkpoint / playback / video workflow
+- Deterministic PPO lift-and-hold showcase with fixed initial state
+
+On the other hand, the following remain as future challenges.
+
+- Formal retention success in stochastic rollout
+- Quantitative comparison of PPO residual against zero-residual scripted baseline
+- Success rate when bottle initial position is varied
+- Evaluation with held-out offsets
+- Mass / friction variation
+- Perception integration
+- Sim-to-real transfer
+- Real G1 evaluation
+
+The current achievement is not at the stage where "G1 can autonomously grasp a bottle at an arbitrary position."
+
+More precisely, the current stage is as follows.
+
+> A scripted grasp / lift baseline that is physically valid for a bottle-like object at a fixed position has been created, and an environment has been built around it where 12D hand residual PPO can be trained, played back, and visualized.
+
+---
+
+## Next Week: Moving to Random-Placement Curriculum
+
+Next week, the plan is to move to a random-placement curriculum that slightly varies the bottle position on the table, not just a fixed initial position.
+
+Rather than introducing large randomization from the start, I begin from the range reachable by the current scripted arm trajectory.
+
+The initial plan is as follows.
+
+```
+bottle x:
+  nominal position ± 0.015 m
+
+bottle y:
+  nominal position ± 0.015 m
+
+yaw:
+  fixed initially
+
+mass / friction:
+  fixed initially
+```
+
+The current policy controls only hand residual, and the arm is scripted.
+
+Therefore, what I want to verify in the next stage is not "can it pick up a bottle at an arbitrary position," but rather how far hand contact can accommodate small positional offsets near the nominal grasp geometry.
+
+Also, the plan is to compare the zero-residual scripted baseline with the fixed state against the deterministic PPO policy to confirm what influence the PPO residual has on the scripted prior.
+
+After that, I will proceed to an environment where success rates, termination distributions, and videos can be evaluated separately while using held-out offsets.
+
+---
+
+## Summary
+
+This time, a reinforcement learning project handling bottle grasping and lifting in Isaac Lab targeting the Unitree G1 Inspire Hand was started.
+
+In the first week of the project, the following workflow was constructed.
+
+```
+safe pre-grasp
+  ↓
+scripted arm phases
+  ↓
+AI-assisted contact geometry diagnosis
+  ↓
+slow contact / squeeze / lift baseline
+  ↓
+formal retention-and-lift validation
+  ↓
+12D hand residual PPO
+  ↓
+deterministic playback / showcase video
+```
+
+In particular, for robot hand tasks involving contact, rather than simply running PPO for a long time immediately, I came to appreciate the importance of confirming wrist roll, thumb opposition, finger targets, stiffness, and trajectory timing one by one using diagnostics with AI as assistance.
+
+At this point, I have confirmed a scripted baseline for a fixed initial state and a deterministic lift / hold showcase incorporating PPO.
+
+Next week, I plan to introduce a small bounded random-placement curriculum and gradually expand to conditions beyond just a fixed position.
+
+Without treating simulation success directly as real robot performance or safety, I will continue advancing the G1 bottle grasping and lifting reinforcement learning project step by step, separating the task scope, evaluation conditions, and failure cases.

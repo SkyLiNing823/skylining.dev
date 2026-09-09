@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Github, Instagram, Linkedin, Mail, MapPin, Sparkles } from "lucide-react";
 import { Card } from "@/components/card";
-import { education, experiences, homeSkillGroups, profile, writingPlaceholders } from "@/lib/site-data";
+import { education, experiences, homeSkillGroups, profile } from "@/lib/site-data";
+import { formatPostDate, getAllPosts } from "@/lib/writing";
 
 const focus = ["Applied ML", "Full-stack AI", "MLOps"];
 
@@ -22,6 +23,8 @@ function getHomeOrg(org: string) {
 }
 
 export default function HomePage() {
+  const latestPosts = getAllPosts().slice(0, 4);
+
   return (
     <div className="overflow-hidden">
       <section className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
@@ -116,7 +119,18 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-2">
-          {writingPlaceholders.map((post) => <Card key={post.title} {...post} />)}
+          {latestPosts.map((post) => (
+            <Card
+              key={post.slug}
+              title={post.title}
+              description={post.description}
+              tags={[post.category, ...post.tags.slice(0, 3)]}
+              href={`/writing/${post.slug}`}
+              image={post.coverImage}
+              imageAlt=""
+              meta={formatPostDate(post.date)}
+            />
+          ))}
         </div>
       </section>
     </div>

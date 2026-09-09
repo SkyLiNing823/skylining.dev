@@ -1,0 +1,1231 @@
+---
+title: "G1 Bottle Pick-and-Lift: Mass Curriculum and a Safe Approach Policy"
+description: "Week 2: scaling to a 0.62 kg bottle while developing curriculum learning and a safer approach policy."
+date: "2026-08-14"
+publishedAt: "2026-08-14T09:00:00+09:00"
+category: "Technical"
+series: "G1 Bottle Pick-and-Lift"
+tags: ["Physical AI", "Robotics", "Reinforcement Learning", "Isaac Lab", "Curriculum Learning"]
+language: ["English"]
+status: "published"
+coverImage: "/writing/g1_bottle_pick_and_lift_rl_week_2/cover.webp"
+sourceUrl: "https://dev.classmethod.jp/articles/g1_bottle_pick_and_lift_rl_week_2/"
+---
+
+## Introduction
+
+In the previous article, I built a reinforcement learning environment on Isaac Lab targeting the Unitree G1 Inspire Hand, for grasping and lifting a bottle-shaped object.
+
+The main items confirmed up to the previous article are as follows.
+
+- RL environment using fixed-base G1 and Inspire Hand
+- Scripted phase controller with separate safe / ingress / grasp / lift phases
+- Slow contact / squeeze / lift trajectory
+- Scripted grasp / lift baseline for lightweight bottle-like objects
+- 12D hand residual PPO
+- Deterministic lift / hold showcase with fixed initial state
+- Safe pre-grasp policy considering self-collision
+
+At the end of the previous article, the plan was to proceed to small bounded RandPos, varying the bottle's initial position by ±1.5 cm in the x/y direction as the next step.
+
+However, when actually trying the RandPos task, I found problems that could not be solved simply by expanding the learning range of the hand residual.
+
+Furthermore, success with the lightweight 0.08 kg bottle-like object used previously does not explain grasp / retention under mass conditions close to a 600 ml beverage bottle.
+
+So this week, rather than simply continuing the originally planned RandPos training, I divided the challenges into the following two areas.
+
+1. Mass Curriculum for gradual adaptation up to the 0.62 kg condition
+2. Safe Approach Policy for approaching the outside of a dynamic bottle without knocking it over
+
+Furthermore, after evaluating each policy individually, I also verified the controlled ingress connecting Stage 1 to Stage 2.
+
+This article summarizes the following work carried out this week.
+
+- Limitations found with hand-only RandPos
+- Mass Curriculum from 0.08 kg to 0.62 kg
+- Formal deterministic evaluation of the 0.62 kg grasp / lift policy
+- Safe Approach Policy for dynamic RandPos
+- Formal deterministic evaluation of the Stage 1 policy
+- Controlled ingress connecting Stage 1 and Stage 2
+- Isaac Lab decimation issue discovered during integration
+- Current status and plans for next week
+
+> The results in this article are simulation results using a simplified rigid-body bottle on Isaac Lab. They do not represent actual PET bottles, the performance of a real G1, safety, or sim-to-real transfer.
+
+---
+
+## Issues Carried Over from Last Time
+
+In the previous configuration, the large arm trajectory was fixed as scripted, and PPO was responsible for the 12D residual action of the Inspire Hand.
+
+```
+scripted arm trajectory
+  + scripted hand target
+  + 12D PPO hand residual
+  ↓
+grasp formation
+  ↓
+lift
+  ↓
+retention
+```
+
+This configuration was effective as a baseline for learning contact adaptation and anti-slip correction for lightweight bottles at a fixed initial position.
+
+On the other hand, the following two constraints remained.
+
+### 1. Arm trajectory does not follow the bottle position
+
+Even if the bottle position changes, the scripted arm trajectory moves to the same position.
+
+Therefore, even with a positional offset of a few centimeters, there was a possibility that the hand residual alone could not compensate up to the grasp position.
+
+### 2. The bottle used was lightweight
+
+The previous bottle-like object was 0.08 kg.
+
+This is effective as a lightweight proxy for confirming the feasibility of the contact trajectory, but it is not close to the mass conditions of a 600 ml beverage bottle.
+
+This time, the following was assumed as a simplified full-bottle condition.
+
+```
+liquid:
+  approximately 0.60 kg
+
+bottle / cap:
+  approximately 0.02 kg
+
+total:
+  0.62 kg
+```
+
+However, this is a simplified condition that only approximates the mass.
+
+The following elements present in an actual PET bottle are not included.
+
+- Sloshing of the liquid contents
+- Changes in center of mass
+- Deformation of PET material
+- Changes in friction due to label and surface condition
+- Flexibility of the bottle wall
+- Detailed contact geometry of the cap and neck
+
+---
+
+## Limitations Found with Hand-Only RandPos
+
+First, as planned previously, I implemented a RandPos task varying the bottle's initial position by ±1.5 cm in the x/y direction.
+
+The conditions were as follows.
+
+```
+bottle position:
+  x/y ±0.015 m
+
+arm:
+  fixed scripted trajectory
+
+hand:
+  12D PPO residual
+
+bottle:
+  dynamic rigid body
+
+training:
+  128 parallel environments
+  300 iterations
+```
+
+In this task, PPO corrects only the finger joints, and the arm trajectory moves to the same position regardless of the bottle's random position.
+
+### Training results
+
+Near the end, the following values were confirmed.
+
+| Metric | Result |
+| --- | --- |
+| Mean reward | approximately +0.91 |
+| Object out of workspace | 0.1328 |
+| Strict retention / lift success | 0.0000 |
+
+Mean reward became a positive value, but strict retention / lift success was 0.
+
+When checking the deterministic playback, the main failures were as follows.
+
+```
+bottle position changes
+  ↓
+scripted arm moves to the nominal ingress pose
+  ↓
+hand contacts the bottle from an incorrect position
+  ↓
+bottle is pushed or toppled
+  ↓
+finger residual cannot recover the grasp
+```
+
+In other words, even if the PPO reward increases, it does not necessarily mean that the behavior of grasping and lifting the bottle is working.
+
+### Why hand residual alone could not handle it
+
+What the 12D hand residual can handle is mainly local corrections such as the following.
+
+- Fine adjustment of finger contact
+- Adjustment of thumb opposition
+- Correction of grip strength
+- Anti-slip correction during lift
+
+On the other hand, what is needed when the bottle position changes is correction of the arm's overall final approach position.
+
+```
+finger-scale correction
+≠
+arm-scale positioning correction
+```
+
+From this result, I determined that rather than leaving RandPos adaptation to a hand-only policy, it was necessary to divide roles as follows.
+
+```
+Stage 1:
+  arm approach according to bottle position
+
+Stage 2:
+  grasp / squeeze / lift / retention
+```
+
+This was the first important failure case of this week.
+
+> Hand residual policy is not a policy that corrects arm positioning errors on the scale of several centimeters.
+
+---
+
+## Why I Proceeded to Mass Curriculum Before RandPos
+
+While the limitations of hand-only RandPos became clear, there was also another important problem.
+
+There is no guarantee that the policy trained with the previous 0.08 kg bottle maintains grasp / retention at 0.62 kg.
+
+In fact, when I ran the 0.62 kg bottle under a scripted zero-residual condition, the close / squeeze sequence itself could be executed, but meaningful lift was not achieved.
+
+Representative results were as follows.
+
+| Condition | Maximum center-height increase | Strict retention |
+| --- | --- | --- |
+| Hand stiffness 50 | approximately 2.9 mm | False |
+| Hand stiffness 100 | approximately 2.9 mm | False |
+
+Even when hand stiffness was increased from 50 to 100, the lift amount changed very little.
+
+This shows that simply increasing actuator stiffness does not establish full-mass grasp.
+
+Also, when checking the actual joint position, some of the four fingers had moved close to the target, but the thumb intermediate / distal joints were significantly constrained by contact.
+
+In other words, the problem when the bottle mass increases is not simply insufficient target angle, but a contact-rich problem that includes the following elements.
+
+- Thumb-to-finger opposition
+- Relative position of hand and bottle
+- Contact force distribution
+- Object displacement during squeeze
+- Slip at the start of lift
+- Increase in required grip force due to bottle mass
+
+Therefore, instead of changing from 0.08 kg to 0.62 kg all at once, I adopted a Mass Curriculum that gradually increases the mass.
+
+---
+
+## Mass Curriculum from 0.08 kg to 0.62 kg
+
+The mass stages used this time are as follows.
+
+```
+0.08 kg
+  ↓
+0.20 kg
+  ↓
+0.35 kg
+  ↓
+0.50 kg
+  ↓
+0.62 kg
+```
+
+The basic scripted trajectory and hand residual action are common across each stage.
+
+```
+arm:
+  safe → ingress → slow lift
+
+hand:
+  side-open
+  → slow contact
+  → slow squeeze
+  + 12D PPO residual
+
+self-collision:
+  enabled
+
+action:
+  12D hand residual
+```
+
+### Transfer method
+
+For each stage with changed mass, weights-only transfer was used instead of a normal resume.
+
+```
+transferred:
+  actor weights
+  critic weights
+
+reset:
+  optimizer state
+  training iteration
+  log directory
+```
+
+After changing the mass, this was treated as adaptation to a different dynamic condition rather than a simple continuation of the same task.
+
+If the optimizer state is also carried over, the update history for the previous mass condition may not be appropriate for the new condition.
+
+Therefore, network weights were reused as the initial policy, while the optimizer and iteration were reset.
+
+---
+
+## Behaviors Confirmed at Each Mass Stage
+
+An overview of each stage is as follows.
+
+| Stage | Mass | Initialization | Main results |
+| --- | --- | --- | --- |
+| Lightweight | 0.08 kg | Scripted / PPO baseline | Fixed-state lift / hold |
+| M1 | 0.20 kg | Fresh PPO | Deterministic lift confirmed |
+| M2 | 0.35 kg | Weights-only transfer | Lift with tilt confirmed |
+| M3 | 0.50 kg | Weights-only transfer | Meaningful lift confirmed |
+| M4 | 0.62 kg | Weights-only transfer + consolidation | Formal evaluation conducted |
+
+### 0.20 kg
+
+At the 0.20 kg stage, the formal success signal was around 1–3%.
+
+This is not a practical success rate, but deterministic playback confirmed behavior where the bottle was lifted.
+
+In particular, behavior was observed where the thumb pulled the bottle toward the fingers.
+
+This suggests that not only the scripted target, but the learned residual may be changing its behavior depending on the contact condition.
+
+However, a single deterministic playback is not proof of robustness.
+
+### 0.35 kg
+
+At the 0.35 kg stage, weights-only transfer was performed from the 0.20 kg checkpoint.
+
+Deterministic playback confirmed a lift, but the bottle was significantly tilted.
+
+```
+lift:
+  observed
+
+upright retention:
+  not confirmed
+```
+
+This is not a complete success, but it was treated as a curriculum signal indicating that the learned behavior was not completely lost even when the mass was increased.
+
+### 0.50 kg
+
+The formal success rate at the 0.50 kg stage was also low.
+
+On the other hand, meaningful lift was confirmed in selected deterministic playback.
+
+Formal success near the end of training was approximately 1.56%, corresponding to approximately 2 out of 128 environments.
+
+Therefore, at this stage, the evaluation was as follows.
+
+> Grasp / lift behavior remains at 0.50 kg, but cannot be said to be a practical or robust policy.
+
+### 0.62 kg
+
+As the final stage, adaptation was performed to 0.62 kg, the simplified full-bottle condition.
+
+The initial training included a setting that started episodes from a random phase.
+
+However, this task is a multi-phase controller as follows.
+
+```
+startup
+  ↓
+ingress
+  ↓
+side-open
+  ↓
+contact
+  ↓
+squeeze
+  ↓
+lift
+  ↓
+hold
+```
+
+Using random episode length initialization for such a task can result in training episodes starting from a state where startup or phases before contact are skipped.
+
+Therefore, in the next consolidation run, random episode-length initialization was disabled, so that each run starts in the same phase order.
+
+---
+
+## The Last Checkpoint Is Not Necessarily the Best
+
+In the 0.62 kg consolidation, checkpoints from the early part of training showed relatively high success signals.
+
+On the other hand, as training continued, behavior degraded in later checkpoints.
+
+```
+early training:
+  better retention behavior
+
+late training:
+  degraded behavior
+```
+
+From this result, rather than simply selecting the checkpoint from the final iteration, the following were combined for selection.
+
+- Task-specific training metric
+- Deterministic playback
+- Strict termination-based evaluation
+- Bottle lift amount
+- Object displacement
+- Retention behavior
+
+In RL, that training completed to the end and that the last checkpoint is the best are not the same thing.
+
+This time as well, rather than the final checkpoint, I targeted a checkpoint near the relatively early peak for formal evaluation.
+
+---
+
+## Formal Evaluation of the 0.62 kg Stage 2 Policy
+
+In the previous article, deterministic playback video was used as the main showcase.
+
+However, a single MP4 alone is not sufficient to judge the success rate of a policy.
+
+Therefore, this time I created a formal evaluator that runs deterministic inference in multiple environments and aggregates successes from the results of the termination manager.
+
+The evaluation conditions are as follows.
+
+```
+bottle:
+  simplified rigid bottle
+
+mass:
+  0.62 kg
+
+initial position:
+  fixed nominal position
+
+policy:
+  deterministic inference
+
+success:
+  strict retention / lift termination
+
+evaluation:
+  multiple episodes
+  multiple seeds
+```
+
+### Evaluation results
+
+| Seed | Success | Success rate |
+| --- | --- | --- |
+| 42 | 255 / 256 | 99.6094% |
+| 43 | 511 / 512 | 99.8047% |
+| Combined | 766 / 768 | 99.7396% |
+
+Also, across a total of 768 episodes, object-out-of-workspace was 0.
+
+```
+strict retention / lift success:
+  766 / 768
+
+object out of workspace:
+  0 / 768
+
+timeout:
+  2 / 768
+```
+
+From these results, I confirmed that the selected Stage 2 policy has a high success rate under the fixed conditions evaluated.
+
+> These results are simulation results for a fixed initial position, fixed geometry, fixed mass, and simplified rigid bottle. They do not imply RandPos robustness or real-hardware performance.
+
+---
+
+## Separating Training Rollout and Deterministic Evaluation
+
+This time, there was a large difference between the stochastic rollout metric during training and the formal deterministic evaluation.
+
+This was confirmed not only in Stage 2 but also in Stage 1 described later.
+
+Policy actions during training include exploration noise.
+
+```
+training:
+  stochastic action sampling
+
+evaluation:
+  deterministic actor output
+```
+
+Therefore, the success rate in training rollouts and the success rate of the deterministic policy used at deployment time may not match.
+
+From the results this time, I reconfirmed the need to record the following separately.
+
+1. Training-time stochastic rollout
+2. Deterministic checkpoint playback
+3. Multi-episode formal deterministic evaluation
+4. Scripted zero-residual baseline
+5. Held-out randomized evaluation
+
+The fact that mean reward increased, or that some environments succeeded during training, alone is not sufficient to determine that a deterministic policy can solve the task.
+
+Conversely, even if the success rate in training rollouts is low, there are cases where deterministic inference using the actor mean is stable.
+
+---
+
+## Separating RandPos Handling into a Safe Approach Policy
+
+After confirming the Stage 2 full-mass fixed-condition policy, I returned to RandPos.
+
+From the failure of hand-only RandPos, I knew that arm final approach according to bottle position was necessary.
+
+Therefore, in the new Stage 1, rather than moving directly to the inner grasp pose, a pre-contact waypoint on the outside of the bottle was targeted.
+
+```
+dynamic bottle
+  ↓
+outer safe waypoint
+  ↓
+controlled ingress
+  ↓
+grasp-ready pose
+  ↓
+Stage 2
+```
+
+### Why an outer waypoint was necessary
+
+In the previous Stage 1 policy, I had the policy approach directly to an inner target close to the grasp.
+
+With kinematic bottle training, the target could be reached, but when switching to a dynamic bottle, failures occurred where the bottle was contacted before closing, causing it to be pushed or toppled.
+
+```
+direct inner approach
+  ↓
+premature bottle contact
+  ↓
+bottle displacement / toppling
+  ↓
+invalid Stage 2 handover
+```
+
+Therefore, the objective of Stage 1 was limited to the following.
+
+> Reach the outer pre-contact pose without moving the dynamic bottle, while maintaining an open hand and safe wrist orientation.
+
+The conditions for the new Stage 1 task are as follows.
+
+```
+bottle:
+  dynamic 0.62 kg
+
+bottle position:
+  x/y ±0.015 m
+
+wrist:
+  yaw 0.0
+  roll 0.0
+  pitch 0.0
+
+hand:
+  open
+
+self-collision:
+  enabled
+
+action:
+  4D shoulder / elbow
+
+target:
+  outer pre-contact waypoint
+```
+
+Stage 1 does not learn finger contact.
+
+The objective is to create an arm position that can safely connect to Stage 2.
+
+---
+
+## Formal Evaluation of the Stage 1 Safe Approach Policy
+
+In stochastic rollouts near the end of training, pregrasp success was approximately 55–63%.
+
+```
+stochastic training rollout:
+  approximately 0.55–0.63
+```
+
+Looking at this value alone, Stage 1 might appear insufficient.
+
+However, just like Stage 2, a formal deterministic multi-episode evaluator was created and formal evaluation was performed.
+
+### Evaluation conditions
+
+```
+bottle:
+  dynamic 0.62 kg
+
+RandPos:
+  x/y ±0.015 m
+
+wrist roll:
+  0.0
+
+hand:
+  open
+
+self-collision:
+  enabled
+
+policy:
+  deterministic inference
+```
+
+### Evaluation results
+
+| Seed | Pregrasp success | Success rate |
+| --- | --- | --- |
+| 42 | 256 / 256 | 100% |
+| 43 | 512 / 512 | 100% |
+| Combined | 768 / 768 | 100% |
+
+Failure outcomes were as follows.
+
+| Outcome | Count |
+| --- | --- |
+| Pregrasp success | 768 |
+| Object out of workspace | 0 |
+| Timeout | 0 |
+| Other / multiple termination | 0 |
+
+Under the bounded RandPos condition evaluated this time, the deterministic policy reached the outer pregrasp target in all episodes.
+
+The difference from training rollouts is considered to be due to the difference between stochastic exploration and the deterministic actor mean.
+
+In light of these results, the Stage 1 policy was treated as a frozen policy for integration without additional training.
+
+> The result of 768/768 is an empirical result under the evaluated conditions. It does not guarantee a 100% success rate for all unknown conditions.
+
+---
+
+## Adding Controlled Ingress Between Stage 1 and Stage 2
+
+After being able to evaluate Stage 1 and Stage 2 individually, a bridge connecting the two was implemented.
+
+However, if the outer pose from Stage 1 is instantly switched to the inner grasp pose of Stage 2, there is a possibility of delivering a large impact to the dynamic bottle.
+
+Therefore, a deterministic controlled ingress was added between Stage 1 and Stage 2.
+
+```
+Stage 1:
+  outer safe approach
+    ↓
+  outer hold
+    ↓
+Controlled ingress:
+  slow arm interpolation
+  wrist roll 0.0 → -0.25
+    ↓
+Stage 2:
+  side-open
+  → contact
+  → squeeze
+  → lift
+  → hold
+```
+
+In Stage 1, the wrist roll is kept at 0.0 to avoid premature contact with the bottle.
+
+During controlled ingress, the arm position and wrist roll are simultaneously interpolated to Stage 2's grasp-ready pose.
+
+---
+
+## Zeroing Stage 2 Residual in the First Bridge
+
+If the Stage 2 learned residual is activated from the beginning, it becomes difficult to separate the cause when failures occur.
+
+For example, it becomes hard to determine which of the following has a problem.
+
+- Stage 1 final pose
+- Outer hold
+- Controlled ingress
+- Wrist interpolation
+- Hand pre-shape timing
+- Stage 2 observation
+- Learned residual
+
+Therefore, in the first bridge diagnostic, the Stage 2 learned residual was strictly set to zero.
+
+```
+Stage 1:
+  learned deterministic policy
+
+controlled ingress:
+  enabled
+
+Stage 2 scripted prior:
+  enabled
+
+Stage 2 learned residual:
+  exactly zero
+```
+
+With this configuration, I first confirmed only the handover geometry from Stage 1 to Stage 2 and the bottle stability.
+
+---
+
+## Results of the Nominal Zero-Residual Bridge
+
+Running with nominal bottle position, Stage 1 reached the outer gate, then transitioned to Stage 2 through the controlled ingress.
+
+Representative results are as follows.
+
+```
+Stage 1 outer gate:
+  reached
+
+controlled ingress:
+  approximately 60 environment steps
+
+Stage 2:
+  started
+
+unsafe before Stage 2:
+  false
+
+workspace violation:
+  false
+```
+
+The bottle state at handover was as follows.
+
+| Metric | Value |
+| --- | --- |
+| Bottle displacement | approximately 7.1 mm |
+| Bottle speed | approximately 0.089 m/s |
+| Bottle tilt metric | approximately 0.0019 |
+| Stage 2 residual | exactly 0 |
+
+From this result, I confirmed that under the current nominal condition, it is possible to connect from the learned Stage 1 through the controlled ingress to Stage 2.
+
+On the other hand, strict retention / lift success was not achieved under the zero-residual condition.
+
+```
+strict retention / lift:
+  false
+
+maximum center-height increase:
+  approximately 4.8 mm
+
+final center-height increase:
+  approximately 0.04 mm
+
+maximum horizontal displacement:
+  approximately 43 mm
+```
+
+In other words, the bottle did not lift to a meaningful height and moved approximately 4.3 cm horizontally after the contact phase.
+
+This result shows the need to evaluate the following two aspects separately.
+
+```
+safe Stage 1-to-Stage 2 handover:
+  passed
+
+full-mass grasp / lift without learned residual:
+  failed
+```
+
+The fact that lift was not achieved with zero-residual does not mean that the overall bridge failed.
+
+Rather, it confirmed that while the controlled handover itself succeeded, the Stage 2 learned residual is necessary for 0.62 kg grasp / retention.
+
+---
+
+## Decimation Timing Issue Discovered During Integration
+
+In the process of integrating Stage 1 and Stage 2, an important implementation issue related to Isaac Lab's custom ActionTerm was discovered.
+
+The following settings are used in this environment.
+
+```
+physics step:
+  approximately 0.0083 s
+
+environment step:
+  approximately 0.0167 s
+
+decimation:
+  2
+```
+
+In other words, while the policy outputs an action once, the physics simulation is updated twice.
+
+### Execution timing of custom ActionTerm
+
+In the manager-based environment used this time, the conceptual difference is as follows.
+
+```
+process_actions():
+  executed every environment action step
+
+apply_actions():
+  executed every physics substep
+```
+
+In the initial implementation, the counter for controlled ingress and Stage 2 phase was being incremented inside `apply_actions()`.
+
+Therefore, with decimation 2, the counter was advancing twice per environment step.
+
+### Behavior before the fix
+
+According to the settings, the controlled ingress was 60 steps, but in practice it was ending in approximately 30 environment steps.
+
+| Metric | Before fix |
+| --- | --- |
+| Outer gate | step 36 |
+| Stage 2 start | step 65 |
+| Effective ingress | approximately 29 environment steps |
+| Handover speed | approximately 0.176 m/s |
+| Final Stage 2 local step | 1551 |
+
+Also, the side-open, contact, squeeze, and lift timing of Stage 2 was proceeding at approximately twice the intended speed.
+
+### Fix method
+
+I recorded when `process_actions()` was called as needing an environment-step update, and changed it so that the phase counter is only advanced in the first `apply_actions()` call after that.
+
+In the remaining physics substeps, the previously computed joint targets are held.
+
+Conceptually, this is as follows.
+
+```
+process_actions():
+  new environment action received
+  update_pending = true
+
+first apply_actions():
+  update phase
+  update counter
+  compute new targets
+  update_pending = false
+
+remaining physics substeps:
+  hold previous targets
+  do not advance phase counter
+```
+
+### Behavior after the fix
+
+| Metric | Before fix | After fix |
+| --- | --- | --- |
+| Outer gate | step 36 | step 40 |
+| Stage 2 start | step 65 | step 99 |
+| Ingress duration | approximately 29 steps | approximately 59 steps |
+| Handover speed | 0.176 m/s | 0.089 m/s |
+| Final local step | 1551 | 742 |
+
+The controlled ingress now proceeds at a speed close to the configured approximately 60 environment steps.
+
+The bottle speed at handover also decreased to approximately half.
+
+This issue requires particular attention when implementing a multi-phase controller in simulation.
+
+> It is necessary to clearly distinguish whether the phase counter is advanced in units of physics substeps or environment action steps.
+
+Simply naming a variable `step` makes it impossible to know which time axis that step represents.
+
+---
+
+## Checkpoint Contract Issue Encountered During Policy Integration
+
+Another important failure was manually guessing the network architecture and observation dimension of the Stage 1 checkpoint.
+
+In the initial bridge implementation, the Stage 1 actor was assumed as follows.
+
+```
+assumed observation:
+  21D
+
+assumed actor:
+  21 → 256 → 128 → 64 → 4
+```
+
+However, when checking the actual checkpoint tensor shape, the correct contract was as follows.
+
+```
+observation:
+  24D
+
+actor:
+  24 → 128 → 64 → 4
+
+activation:
+  ELU
+```
+
+If the network architecture is incorrectly constructed, the checkpoint weights cannot be loaded correctly.
+
+Also, even if the observation dimension is the same, if the meaning or order of each observation term differs, it is not compatible as a policy input.
+
+Therefore, rather than manually reconstructing the observation in the bridge, the policy observation group used in the Stage 1 training task was reused as-is.
+
+```
+Stage 1 training task observation
+  ↓
+exact same observation config
+  ↓
+integrated bridge runtime observation
+```
+
+From this experience, I learned that checkpoint compatibility requires at least the following.
+
+- Network layer shape
+- Activation function
+- Observation dimension
+- Observation term order
+- Observation semantics
+- Observation normalization
+- Action dimension
+- Action scale / offset
+
+> When a policy checkpoint exists, do not guess the architecture or observation — treat the checkpoint tensor and training task config as the source of truth.
+
+This was an important lesson when reusing policies across different tasks.
+
+---
+
+## Lessons Learned from Organizing the Evaluation Script
+
+This time, termination-based evaluators were created for both Stage 1 and Stage 2.
+
+The official playback script is convenient for confirming deterministic behavior, but is not suited for aggregating termination outcomes across multiple episodes.
+
+Therefore, the formal evaluator directly aggregated the following.
+
+```
+success termination
+object-out-of-workspace
+timeout
+other / multiple outcome
+```
+
+Also, for judging execution success, not only the process exit code but also the following were checked.
+
+- Explicit start marker
+- Result marker
+- Completion marker
+- Presence of Python tracebacks
+- JSON summary
+- Total episode count
+- Consistency of termination counts
+
+In simulation scripts, even if the application starts and the exit code is 0, the actual main loop may not have been executed.
+
+Therefore, explicitly outputting markers such as the following proved to be effective.
+
+```
+EVALUATION_START
+EVALUATION_RESULT
+EVALUATION_COMPLETION=OK
+```
+
+On the other hand, if requiring the marker to be output after `simulation_app.close()` as a mandatory condition, there may be false failures due to the shutdown process.
+
+It was more appropriate to output the completion marker before application shutdown, and then check process status and the presence of tracebacks afterward.
+
+---
+
+## Summary of Failure Cases This Week
+
+This week, rather than simply increasing the success rate, I reviewed task design and evaluation methods through multiple failures.
+
+### Failure 1：Hand-only RandPos
+
+```
+fixed arm trajectory
+  + randomized bottle position
+  + hand residual
+  ↓
+incorrect contact position
+  ↓
+bottle push / toppling
+  ↓
+strict success 0
+```
+
+Countermeasure：
+
+```
+Separate RandPos compensation into Stage 1 arm policy
+```
+
+### Failure 2：Direct application from 0.08 kg to 0.62 kg
+
+```
+lightweight grasp prior
+  ↓
+full-mass bottle
+  ↓
+insufficient force closure
+  ↓
+no meaningful lift
+```
+
+Countermeasure：
+
+```
+0.20 → 0.35 → 0.50 → 0.62 kg
+mass curriculum
+```
+
+### Failure 3：Direct inner approach
+
+```
+policy approaches grasp pose directly
+  ↓
+premature dynamic bottle contact
+  ↓
+bottle disturbance before close
+```
+
+Countermeasure：
+
+```
+outer safe waypoint
+  + controlled ingress
+```
+
+### Failure 4：Judgment based on training metrics alone
+
+```
+mean reward increases
+  ↓
+visual or formal success remains absent
+```
+
+Countermeasure：
+
+```
+deterministic playback
+  + termination-based multi-episode evaluation
+```
+
+### Failure 5：Guessing checkpoint contract
+
+```
+assumed observation / architecture
+  ↓
+checkpoint incompatibility
+```
+
+Countermeasure：
+
+```
+inspect model_state_dict
+  + reuse exact training observation config
+```
+
+### Failure 6：Phase timing acceleration due to decimation
+
+```
+phase counter updated per physics substep
+  ↓
+ingress / contact / lift execute approximately 2x faster
+```
+
+Countermeasure：
+
+```
+phase counter update once per environment action step
+```
+
+---
+
+## Current Pipeline
+
+After this week's work, the pipeline has the following configuration.
+
+```
+dynamic 0.62 kg bottle
+  ↓
+bounded x/y RandPos
+  ↓
+Stage 1:
+  4D safe outer approach policy
+  open hand
+  wrist roll 0.0
+  self-collision enabled
+  ↓
+outer hold
+  ↓
+controlled ingress:
+  approximately 60 environment steps
+  wrist roll 0.0 → -0.25
+  ↓
+Stage 2:
+  scripted side-open / contact / squeeze / lift
+  + frozen 12D learned hand residual
+  ↓
+strict retention / lift evaluation
+```
+
+Currently, Stage 1 and Stage 2 have each completed formal evaluation in their respective individual tasks.
+
+| Module | Evaluation condition | Result |
+| --- | --- | --- |
+| Stage 1 Safe Approach | Dynamic 0.62 kg, x/y ±1.5 cm | 768 / 768 |
+| Stage 2 Grasp / Lift | Fixed nominal 0.62 kg | 766 / 768 |
+| Nominal zero-residual handover | Fixed nominal 0.62 kg | Handover passed |
+| Integrated learned grasp / lift | Not yet evaluated | Pending |
+
+What is important is that simply multiplying these success rates does not yield the integrated success rate.
+
+The final state distribution of Stage 1 is not necessarily consistent with the training distribution of Stage 2.
+
+Therefore, in the next phase, it is necessary to run the Stage 2 learned residual from the actual Stage 1 handover state and measure the formal success rate after integration.
+
+---
+
+## What Was Accomplished This Week
+
+The main achievements this week are as follows.
+
+- Implementation and failure analysis of the hand-only RandPos task
+- Separation of roles between arm final approach and hand residual
+- Mass Curriculum from 0.08 kg to 0.62 kg
+- Weights-only transfer workflow
+- Fixed-condition consolidation of the 0.62 kg policy
+- Formal deterministic evaluation of the 0.62 kg Stage 2 policy
+- Safe Approach Policy for dynamic 0.62 kg bottle
+- Stage 1 formal evaluation with x/y ±1.5 cm RandPos
+- Implementation of outer safe waypoint and controlled ingress
+- Verification of zero-residual nominal handover
+- Correction of checkpoint architecture / observation contract
+- Decimation-aware timing fix for custom ActionTerm
+- Separation of training metrics, playback, and formal evaluation
+
+In terms of numbers, the following results were confirmed.
+
+```
+Stage 2 fixed-condition:
+  766 / 768 strict retention / lift success
+
+Stage 1 bounded RandPos:
+  768 / 768 pregrasp success
+
+Nominal controlled ingress:
+  reached Stage 2
+  no pre-Stage-2 safety violation
+```
+
+On the other hand, the following have not yet been confirmed.
+
+```
+learned Stage 2 from actual integrated handover
+integrated RandPos pick-and-lift success
+realistic PET bottle behavior
+perception-based bottle localization
+real robot evaluation
+sim-to-real transfer
+```
+
+---
+
+## Next Week：Toward Final Evaluation of Integrated Pick-and-Lift
+
+Next week, I plan to proceed with the final integration of this simulation-first project.
+
+First, I will confirm via video the zero-residual controlled ingress that was verified by metrics this week.
+
+After that, I will enable the frozen Stage 2 learned residual under the same nominal handover conditions.
+
+```
+learned Stage 1
+  ↓
+controlled ingress
+  ↓
+learned Stage 2
+  ↓
+grasp
+  ↓
+lift
+  ↓
+retention
+```
+
+If strict retention / lift is achieved under nominal conditions, I will then conduct an integrated multi-episode evaluation including x/y ±1.5 cm RandPos.
+
+In next week's evaluation, I plan to record the following separately.
+
+- Stage 1 outer gate success
+- Unsafe disturbance before Stage 2
+- Controlled ingress completion
+- Strict retention / lift success
+- Object-out-of-workspace
+- Timeout
+- Bottle horizontal displacement
+- Maximum lift height
+- Uprightness
+- Final hold duration
+
+In the next article in this series, I plan to summarize the following.
+
+1. Nominal integrated result with learned Stage 2 connected
+2. Integrated RandPos multi-episode evaluation
+3. Failure distribution
+4. Final evaluation of the entire simulation-first project
+5. Additional verification required before proceeding to a real robot
+
+Even if I proceed to real robot evaluation, rather than directly connecting the simulation policy to the real hardware, I will need to separately confirm the hardware configuration, joint mapping, control interface, velocity / torque limits, emergency stop, and operator supervision.
+
+I also have no plans to perform online RL exploration on real hardware.
+
+---
+
+## Summary
+
+In the previous article, I built a scripted grasp / lift baseline and a 12D hand residual PPO for a lightweight bottle-like object of 0.08 kg.
+
+This week, I attempted to move from there to a small bounded RandPos, but found that the hand residual alone could not compensate for arm positioning errors.
+
+Furthermore, to extend the success with the lightweight bottle to conditions closer to a 600 ml beverage bottle, I conducted a Mass Curriculum at 0.20 kg, 0.35 kg, 0.50 kg, and 0.62 kg.
+
+As a result, under fixed conditions at 0.62 kg, the Stage 2 policy recorded 766/768 strict retention / lift success.
+
+For RandPos support, I redesigned Stage 1 policy to target a safe waypoint outside the dynamic bottle, rather than approaching the grasp pose directly.
+
+The Stage 1 policy recorded 768/768 pregrasp success under bounded RandPos of x/y ±1.5 cm.
+
+In addition, I added approximately 60 environment steps of controlled ingress between Stage 1 and Stage 2, and confirmed that the Stage 2 handover can be reached safely under nominal conditions.
+
+Through the integration process, I also learned that checkpoint architecture and observation semantics must not be assumed, and that the phase timing of custom ActionTerm must be distinguished between physics substeps and environment steps.
+
+The current point of progress is as follows.
+
+> I individually built and evaluated Stage 1 Safe Approach and Stage 2 Grasp / Lift for a 0.62 kg bottle, and confirmed that the two can be connected via controlled ingress under nominal conditions.
+
+On the other hand, the integrated grasp / lift running the learned Stage 2 from the actual handover state, and the end-to-end evaluation including RandPos, have not yet been completed.
+
+Next week, I plan to conduct a nominal integrated evaluation with the learned Stage 2 connected, as well as a bounded RandPos multi-episode evaluation, and summarize the final results of this simulation-first bottle pick-and-lift project.
+
+I will continue verification in a way that does not overestimate simulation results, recording not only successful behaviors but also failures such as hand-only RandPos, full-mass scripted grasp, direct inner approach, checkpoint contract, and decimation timing.

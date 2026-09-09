@@ -36,12 +36,12 @@ export const experiences = [
     location: "Tokyo, Japan",
     period: "Jul. 2026 - Sep. 2026",
     bullets: [
-      "Developed Physical AI applications for Unitree G1 and Go2 robots, including a visual inspection agent that converts live camera input into object detections, risk assessments, and operator alerts.",
-      "Integrated Unitree SDK2, CycloneDDS, and persistent GPU inference services for continuous camera ingestion, structured outputs, deterministic geometry policies, and automated inspection reports.",
-      "Profiled the end-to-end vision pipeline and optimized image processing and camera capture, reducing overlay latency by 92% and improving Go2 image updates from 3-4 seconds to approximately 1 second.",
-      "Evaluated vision-language models and built a Grounding DINO monitoring pipeline with ROI-based risk analysis, real-time overlays, inference telemetry, process controls, and audio warnings.",
+      "Developed Physical AI applications for Unitree G1 and Go2 robots, spanning real-time visual inspection and robotic manipulation.",
+      "Built and optimized a visual inspection pipeline using Unitree SDK2, CycloneDDS, and Grounding DINO, reducing overlay latency by 92% and improving image updates from 3-4 seconds to approximately 1 second.",
+      "Developed a hybrid Isaac Lab + PPO manipulation system for Unitree G1, combining scripted motion, residual hand control, curriculum learning, and randomized simulation for bottle pick-and-lift.",
+      "Achieved 97.4% integrated success in randomized simulation and transferred the learned policy to a real G1 Inspire Hand, successfully grasping and lifting a loaded PET bottle containing approximately 600 ml.",
     ],
-    tags: ["Physical AI", "Robotics", "Unitree", "Computer Vision"],
+    tags: ["Physical AI", "Robotics", "Computer Vision", "Reinforcement Learning", "Isaac Lab"],
   },
   {
     role: "BRAIN Quantitative Research Consultant",
@@ -117,20 +117,5 @@ export const projectPlaceholders = [
     description:
       "I am refining each project into a structured case study with problem, role, technical design, results, and lessons learned.",
     tags: ["Case Study", "Engineering", "Product"],
-  },
-];
-
-export const writingPlaceholders = [
-  {
-    title: "Writing space coming soon",
-    description:
-      "Future notes will cover applied ML, MLOps, graduate school, J-pop, travel, and personal reflections.",
-    tags: ["Technical Notes", "Travel", "Reflections"],
-  },
-  {
-    title: "Personal journal in progress",
-    description:
-      "This area will become a lightweight blog for thoughts between San Diego, Taipei, and Tokyo.",
-    tags: ["Life", "Career", "J-pop"],
   },
 ];

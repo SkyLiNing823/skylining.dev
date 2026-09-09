@@ -12,9 +12,12 @@ export type Post = {
   publishedAt: string;
   updatedAt?: string;
   category: string;
+  series?: string;
   tags: string[];
   language: string[];
   status: "published" | "draft";
+  coverImage?: string;
+  sourceUrl?: string;
   content: string;
 };
 
@@ -26,6 +29,10 @@ function toStringArray(value: unknown): string[] {
 
 function getTimestamp(post: Post) {
   return Number(new Date(post.publishedAt || post.date));
+}
+
+export function formatPostDate(date: string, dateStyle: "medium" | "long" = "medium") {
+  return new Intl.DateTimeFormat("en", { dateStyle, timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 }
 
 export function getAllPosts(): Post[] {
@@ -49,9 +56,12 @@ export function getAllPosts(): Post[] {
         publishedAt: data.publishedAt ?? data.date ?? "",
         updatedAt: data.updatedAt,
         category: data.category ?? "Notes",
+        series: data.series,
         tags: toStringArray(data.tags),
         language: toStringArray(data.language),
         status,
+        coverImage: data.coverImage,
+        sourceUrl: data.sourceUrl,
         content,
       };
     })
