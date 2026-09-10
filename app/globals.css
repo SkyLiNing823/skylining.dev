@@ -285,7 +285,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 
 .cinematic-edge-extension {
   position: absolute;
-  z-index: -10;
+  z-index: 0;
   inset: -14vmax;
   display: none;
   overflow: hidden;
@@ -330,7 +330,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 }
 
 .cinematic-scene {
-  z-index: -8;
+  z-index: 1;
   background-position: var(--scene-position);
   background-size: cover;
   transform: scale(1.035);
@@ -343,7 +343,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 .cinematic-scene-night { background-image: url("/summer-hills-night-v9.webp"); opacity: var(--scene-night-opacity); }
 
 .cinematic-color-grade {
-  z-index: 1;
+  z-index: 6;
   background: linear-gradient(180deg, rgba(6, 68, 135, .03), transparent 50%, rgba(5, 42, 48, .12));
   mix-blend-mode: soft-light;
   transition: opacity 1.2s ease, background-color 1.2s ease;
@@ -355,7 +355,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 
 .cinematic-sunlight {
   position: absolute;
-  z-index: -5;
+  z-index: 4;
   left: var(--cinematic-sun-x);
   top: var(--cinematic-sun-y);
   width: clamp(260px, 35vw, 620px);
@@ -376,7 +376,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 
 .cinematic-moonlight {
   position: absolute;
-  z-index: -5;
+  z-index: 4;
   right: -12vw;
   top: -24vw;
   width: 72vw;
@@ -396,7 +396,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 .cloud-loop {
   --cloud-tile-width: max(100vw, 177.8vh);
   position: absolute;
-  z-index: -6;
+  z-index: 3;
   inset: -4% 0 0;
   overflow: hidden;
   pointer-events: none;
@@ -422,7 +422,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 .cloud-loop-hero { opacity: .84; }
 .cloud-loop-hero .cloud-loop-track { animation: cloud-track-drift 260s linear -83s infinite; }
 .cloud-loop-distant {
-  z-index: -7;
+  z-index: 2;
   top: -9%;
   opacity: .28;
   filter: saturate(.82) brightness(1.06);
@@ -439,7 +439,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 
 .terrain-grass-overlay {
   position: absolute;
-  z-index: -2;
+  z-index: 5;
   inset: var(--scene-inset);
   pointer-events: none;
   opacity: .68;
@@ -460,7 +460,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 .cinematic-home[data-phase="dusk"] .terrain-grass-overlay { opacity: .58; filter: sepia(.34) saturate(.9) brightness(.88); }
 .cinematic-home[data-phase="night"] .terrain-grass-overlay { opacity: .42; filter: brightness(.44) saturate(.72) hue-rotate(8deg); }
 
-.cinematic-pollen { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.cinematic-pollen { position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden; }
 .cinematic-pollen span { position: absolute; bottom: -10px; width: 3px; height: 3px; border-radius: 50%; background: rgba(255,250,204,.9); box-shadow: 0 0 9px rgba(255,241,159,.8); animation: pollen-rise 11s ease-in infinite; }
 .cinematic-pollen span:nth-child(1) { left: 8%; animation-delay: -2s; }
 .cinematic-pollen span:nth-child(2) { left: 15%; animation-delay: -7s; animation-duration: 14s; }
@@ -476,7 +476,7 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 .cinematic-pollen span:nth-child(12) { left: 96%; animation-delay: -11s; animation-duration: 17s; }
 
 .cinematic-vignette {
-  z-index: 2;
+  z-index: 7;
   background:
     linear-gradient(180deg, rgba(0,27,63,.1), transparent 20%, transparent 65%, rgba(5,33,38,.22)),
     radial-gradient(ellipse at center, transparent 42%, rgba(2,34,68,.14) 120%);
@@ -634,7 +634,8 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 
 @media (max-width: 640px) {
   .cinematic-home { --scene-inset: -1%; --scene-position: 34% center; }
-  .cinematic-edge-extension { display: block; }
+  .cinematic-scene { animation: none; transform: translateZ(0) scale(1.035); }
+  .terrain-grass-overlay { display: none; }
   .content-sky-scene { inset: -1%; background-position: 34% center; }
   .content-cloud-loop { top: -1%; }
   .cloud-loop { top: -1%; }
@@ -663,7 +664,6 @@ body:has(.cinematic-home) > .sky-atmosphere { display: none; }
 }
 
 @media (max-height: 520px) {
-  .cinematic-edge-extension { display: block; }
   .motto-wrap { top: 42%; }
   .motto-wrap h1 { font-size: clamp(2.5rem, 10vw, 4.25rem); }
   .motto-jp { display: none; }

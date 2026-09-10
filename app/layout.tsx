@@ -15,13 +15,13 @@ export const metadata: Metadata = {
     title: "skylining | Sky Lee",
     description: "The sky is the limit — Sky Lee's personal space.",
     type: "website",
-    images: [{ url: "/og.png", width: 1672, height: 941, alt: "A luminous summer sky and meadow for skylining by Sky Lee" }],
+    images: [{ url: "/og-sky-v2.png", width: 1200, height: 630, alt: "A clear summer sky above the coastal hills of skylining" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "skylining | Sky Lee",
     description: "The sky is the limit — Sky Lee's personal space.",
-    images: ["/og.png"],
+    images: ["/og-sky-v2.png"],
   },
 };
 
@@ -35,6 +35,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
+      <head>
+        <link rel="preload" as="image" href="/summer-hills-dawn-v10.webp" type="image/webp" />
+      </head>
       <body>
         <SkyBackdrop />
         <SiteHeader />

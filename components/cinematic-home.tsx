@@ -93,7 +93,7 @@ export function CinematicHome() {
       </div>
 
       <div className="terrain-grass-overlay" aria-hidden="true">
-        <img src="/summer-hills-grass-overlay-v10.webp" alt="" />
+        <img src="/summer-hills-grass-overlay-v10.webp" alt="" loading="lazy" decoding="async" />
       </div>
 
       <div className="cinematic-pollen" aria-hidden="true">
@@ -122,6 +122,7 @@ export function CinematicHome() {
                 type="button"
                 className="home-time-preset"
                 data-active={time.phase === phase}
+                aria-label={`Set time to ${label}`}
                 aria-pressed={time.phase === phase}
                 onClick={() => updateHour(presetHour)}
               >
