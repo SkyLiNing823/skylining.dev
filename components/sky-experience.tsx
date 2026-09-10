@@ -25,12 +25,14 @@ export function SkyBackdrop() {
       data-phase={time.phase}
       style={{
         "--scene-day-opacity": time.dayOpacity,
+        "--scene-dawn-opacity": time.dawnOpacity,
         "--scene-dusk-opacity": time.duskOpacity,
         "--scene-night-opacity": time.nightOpacity,
       } as React.CSSProperties}
       aria-hidden="true"
     >
       <div className="content-sky-scene content-sky-scene-day" />
+      <div className="content-sky-scene content-sky-scene-dawn" />
       <div className="content-sky-scene content-sky-scene-dusk" />
       <div className="content-sky-scene content-sky-scene-night" />
 

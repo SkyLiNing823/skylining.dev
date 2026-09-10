@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Clock3, Menu, Moon, Sun, Sunset, X } from "lucide-react";
+import { ArrowUpRight, Clock3, Menu, Moon, Sun, Sunrise, Sunset, X } from "lucide-react";
 import { getDeviceHour, getSkyTimeState, SKY_TIME_EVENT } from "@/lib/sky-time";
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
 ];
 
 const timePresets = [
+  { hour: 6, label: "Dawn", phase: "dawn", Icon: Sunrise },
   { hour: 12, label: "Day", phase: "day", Icon: Sun },
   { hour: 18, label: "Dusk", phase: "dusk", Icon: Sunset },
   { hour: 22, label: "Night", phase: "night", Icon: Moon },
@@ -52,11 +53,21 @@ export function CinematicHome() {
         "--cinematic-sun-x": `${time.sunX}%`,
         "--cinematic-sun-y": `${time.sunY}%`,
         "--scene-day-opacity": time.dayOpacity,
+        "--scene-dawn-opacity": time.dawnOpacity,
         "--scene-dusk-opacity": time.duskOpacity,
         "--scene-night-opacity": time.nightOpacity,
       } as React.CSSProperties}
     >
+      <div className="cinematic-edge-extension" aria-hidden="true">
+        <div className="cinematic-edge-scene cinematic-edge-scene-day" />
+        <div className="cinematic-edge-scene cinematic-edge-scene-dawn" />
+        <div className="cinematic-edge-scene cinematic-edge-scene-dusk" />
+        <div className="cinematic-edge-scene cinematic-edge-scene-night" />
+        <div className="cinematic-edge-acrylic" />
+      </div>
+
       <div className="cinematic-scene cinematic-scene-day" aria-hidden="true" />
+      <div className="cinematic-scene cinematic-scene-dawn" aria-hidden="true" />
       <div className="cinematic-scene cinematic-scene-dusk" aria-hidden="true" />
       <div className="cinematic-scene cinematic-scene-night" aria-hidden="true" />
       <div className="cinematic-color-grade" aria-hidden="true" />
@@ -178,7 +189,7 @@ export function CinematicHome() {
           </nav>
 
           <p className="mt-auto pt-10 text-xs leading-6 text-white/38">
-            Applied ML · Physical AI · Writing<br />San Diego · Taipei · Tokyo
+            Applied ML · AI System · Writing<br />San Diego · Taipei · Tokyo
           </p>
         </div>
       </aside>

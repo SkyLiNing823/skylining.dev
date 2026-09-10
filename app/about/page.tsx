@@ -46,8 +46,8 @@ export default function AboutPage() {
         <div className="space-y-5">
           <aside className="overflow-hidden rounded-[2rem] border border-white/55 bg-gradient-to-br from-white/55 via-white/38 to-sky-100/30 p-6 shadow-soft backdrop-blur-2xl sm:rounded-[2.5rem] sm:p-8">
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-sky-900/50">Personal motto</p>
-            <blockquote className="font-display mt-8 text-4xl font-normal italic leading-[1.08] tracking-[-0.035em] text-sky-950 sm:text-5xl">
-              “The sky is<br />the limit.”
+            <blockquote className="font-display mt-8 max-w-full whitespace-nowrap text-[clamp(1.45rem,7.5vw,3rem)] font-normal italic leading-[1.08] tracking-[-0.045em] text-sky-950">
+              “The sky is the limit.”
             </blockquote>
             <div className="mt-8 h-px bg-gradient-to-r from-sky-700/25 to-transparent" />
             <p className="mt-5 text-xs leading-6 text-sky-950/45">A reminder to stay curious, keep moving, and leave room for possibility.</p>
