@@ -10,16 +10,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#05070d",
-        card: "#0b1020",
-        ink: "#e5edf7",
-        muted: "#94a3b8",
-        line: "rgba(255,255,255,0.10)",
-        ocean: "#7dd3fc",
+        paper: "#eaf7ff",
+        card: "rgba(255,255,255,0.58)",
+        ink: "#12324a",
+        muted: "#55758a",
+        line: "rgba(255,255,255,0.48)",
+        ocean: "#168dc5",
+        slate: {
+          50: "#102f46",
+          100: "#183a53",
+          200: "#244b63",
+          300: "#355e75",
+          400: "#53768a",
+          500: "#718c9b",
+          950: "#08283e",
+        },
       },
       boxShadow: {
-        soft: "0 24px 80px rgba(0, 0, 0, 0.35)",
-        glow: "0 0 50px rgba(125, 211, 252, 0.18)",
+        soft: "0 24px 80px rgba(54, 126, 169, 0.14)",
+        glow: "0 20px 70px rgba(77, 172, 224, 0.22)",
       },
     },
   },

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SkyBackdrop } from "@/components/sky-experience";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://skylining.dev"),
@@ -9,15 +10,28 @@ export const metadata: Metadata = {
     default: "skylining | Sky Lee",
     template: "%s | skylining",
   },
-  description: "Personal website of Tien-Ning (Sky) Lee: applied ML, full-stack AI, AI products, and writing.",
+  description: "Sky Lee's personal space for applied ML, physical AI, engineering, and writing.",
+  openGraph: {
+    title: "skylining | Sky Lee",
+    description: "The sky is the limit — Sky Lee's personal space.",
+    type: "website",
+    images: [{ url: "/og.png", width: 1672, height: 941, alt: "A luminous summer sky and meadow for skylining by Sky Lee" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "skylining | Sky Lee",
+    description: "The sky is the limit — Sky Lee's personal space.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>
+        <SkyBackdrop />
         <SiteHeader />
-        <main>{children}</main>
+        <main className="relative z-10">{children}</main>
         <SiteFooter />
       </body>
     </html>

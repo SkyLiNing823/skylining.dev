@@ -4,14 +4,20 @@ import { profile } from "@/lib/site-data";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/10 px-6 py-10 text-sm text-slate-500">
-      <div className="mx-auto flex max-w-6xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
-        <p>© {new Date().getFullYear()} {profile.shortName}. Built as skylining.</p>
+    <footer className="site-footer relative z-10 px-4 pb-6 pt-10 sm:px-6 sm:pb-10 sm:pt-16">
+      <div className="glass-panel mx-auto flex max-w-6xl flex-col gap-6 rounded-[1.75rem] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:rounded-full sm:px-7">
         <div className="flex items-center gap-3">
-          <Link href={`mailto:${profile.email}`} className="transition hover:text-ocean" aria-label="Email"><Mail size={18} /></Link>
-          <Link href={profile.linkedin} className="transition hover:text-ocean" aria-label="LinkedIn"><Linkedin size={18} /></Link>
-          <Link href={profile.github} className="transition hover:text-ocean" aria-label="GitHub"><Github size={18} /></Link>
-          <Link href={profile.instagram} className="transition hover:text-ocean" aria-label="Instagram"><Instagram size={18} /></Link>
+          <span className="brand-sun scale-75" aria-hidden="true" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-950/70">{profile.shortName}</p>
+            <p className="mt-1 text-xs text-sky-950/45">© {new Date().getFullYear()} · Somewhere under the same sky.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href={`mailto:${profile.email}`} className="footer-icon" aria-label="Email"><Mail size={16} /></Link>
+          <Link href={profile.linkedin} target="_blank" rel="noreferrer" className="footer-icon" aria-label="LinkedIn"><Linkedin size={16} /></Link>
+          <Link href={profile.github} target="_blank" rel="noreferrer" className="footer-icon" aria-label="GitHub"><Github size={16} /></Link>
+          <Link href={profile.instagram} target="_blank" rel="noreferrer" className="footer-icon" aria-label="Instagram"><Instagram size={16} /></Link>
         </div>
       </div>
     </footer>
